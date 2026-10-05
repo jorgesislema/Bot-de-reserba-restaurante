@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Restaurant AI{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Dashboard</h1>
+
+<!-- Metricas -->
+<div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="text-gray-500 text-sm">Conversaciones</div>
+        <div class="text-2xl font-bold">{{ metricas.conversaciones_hoy }}</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="text-gray-500 text-sm">Pedidos</div>
+        <div class="text-2xl font-bold">{{ metricas.pedidos_hoy }}</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="text-gray-500 text-sm">Reservas</div>
+        <div class="text-2xl font-bold">{{ metricas.reservas_hoy }}</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+        <div class="text-gray-500 text-sm">Ventas Hoy</div>
+        <div class="text-2xl font-bold">${{ "%.2f"|format(metricas.ventas_hoy) }}</div>
+    </div>
+</div>
+
+<!-- Pedidos en tiempo real -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Pedidos en Tiempo Real</h2>
+    <div class="space-y-2">
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+            <span class="font-mono">#20260918001</span>
+            <span class="font-bold">$19.50</span>
+            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm">Preparando</span>
+        </div>
+    </div>
+</div>
+
+<!-- Oportunidades -->
+<div class="bg-white rounded-lg shadow p-4">
+    <h2 class="text-lg font-semibold mb-4">Oportunidades</h2>
+    <div class="space-y-2">
+        <div class="flex items-center justify-between p-3 bg-red-50 rounded border-l-4 border-red-500">
+            <div>
+                <div class="font-medium">Evento 15 personas</div>
+                <div class="text-sm text-gray-500">Cumpleanos - Solicita paquete especial</div>
+            </div>
+            <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-sm">ALTA</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
