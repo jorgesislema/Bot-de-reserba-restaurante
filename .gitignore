@@ -1,0 +1,109 @@
+# ===========================================
+# PYTHON
+# ===========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===========================================
+# VIRTUAL ENVIRONMENT
+# ===========================================
+venv/
+env/
+ENV/
+.venv/
+.env
+
+# ===========================================
+# IDE
+# ===========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ===========================================
+# DATABASE
+# ===========================================
+*.db
+*.sqlite3
+*.sqlite
+
+# ===========================================
+# LOGS
+# ===========================================
+*.log
+logs/
+
+# ===========================================
+# DOCKER
+# ===========================================
+docker-compose.override.yml
+
+# ===========================================
+# ENVIRONMENT VARIABLES
+# ===========================================
+.env
+.env.local
+.env.production
+
+# ===========================================
+# OS
+# ===========================================
+.DS_Store
+Thumbs.db
+
+# ===========================================
+# PYTHON SPECIFIC
+# ===========================================
+*.pyc
+*.pyo
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# ===========================================
+# NODE.JS (Next.js frontend)
+# ===========================================
+node_modules/
+.next/
+out/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===========================================
+# GOOGLE CALENDAR CREDENTIALS
+# ===========================================
+*credentials.json
+*service-account*.json

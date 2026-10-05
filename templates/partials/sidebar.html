@@ -1,0 +1,51 @@
+<aside class="w-64 bg-gray-900 text-white">
+    <div class="p-4">
+        <h1 class="text-xl font-bold">Restaurant AI</h1>
+        <p class="text-gray-400 text-sm">La Terraza</p>
+    </div>
+
+    <nav class="mt-4">
+        <a href="/" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'dashboard' %}active{% endif %}">
+            <i class="fas fa-home w-6"></i> Dashboard
+        </a>
+        <a href="/inbox" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'inbox' %}active{% endif %}">
+            <i class="fas fa-comments w-6"></i> Inbox
+        </a>
+        <a href="/clientes" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'clientes' %}active{% endif %}">
+            <i class="fas fa-users w-6"></i> Clientes
+        </a>
+        <a href="/pedidos" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'pedidos' %}active{% endif %}">
+            <i class="fas fa-shopping-cart w-6"></i> Pedidos
+        </a>
+        <a href="/reservas" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'reservas' %}active{% endif %}">
+            <i class="fas fa-calendar w-6"></i> Reservas
+        </a>
+        <a href="/menu" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'menu' %}active{% endif %}">
+            <i class="fas fa-utensils w-6"></i> Menu
+        </a>
+        <a href="/promociones" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'promociones' %}active{% endif %}">
+            <i class="fas fa-tag w-6"></i> Promociones
+        </a>
+        <a href="/delivery" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'delivery' %}active{% endif %}">
+            <i class="fas fa-truck w-6"></i> Delivery
+        </a>
+
+        <div class="border-t border-gray-700 my-4"></div>
+
+        <a href="/analytics" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'analytics' %}active{% endif %}">
+            <i class="fas fa-chart-bar w-6"></i> Analytics
+        </a>
+        <a href="/ai-intelligence" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'ai-intelligence' %}active{% endif %}">
+            <i class="fas fa-robot w-6"></i> AI Intelligence
+        </a>
+        <a href="/ai-governance" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'ai-governance' %}active{% endif %}">
+            <i class="fas fa-shield-alt w-6"></i> AI Governance
+        </a>
+
+        <div class="border-t border-gray-700 my-4"></div>
+
+        <a href="/configuracion" class="sidebar-item flex items-center px-4 py-3 hover:bg-gray-800 {% if active_page == 'configuracion' %}active{% endif %}">
+            <i class="fas fa-cog w-6"></i> Configuracion
+        </a>
+    </nav>
+</aside>

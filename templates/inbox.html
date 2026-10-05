@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Inbox - Restaurant AI{% endblock %}
+
+{% block content %}
+<div class="flex h-full">
+    <!-- Lista de conversaciones -->
+    <div class="w-80 bg-white border-r">
+        <div class="p-4 border-b">
+            <input type="text" placeholder="Buscar conversacion..."
+                   class="w-full px-3 py-2 border rounded-lg">
+        </div>
+        <div class="overflow-y-auto">
+            <div class="p-3 border-b hover:bg-gray-50 cursor-pointer bg-blue-50">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium">Carlos Perez</span>
+                    <span class="text-xs text-gray-500">19:42</span>
+                </div>
+                <div class="text-sm text-gray-500 truncate">Quiero una pizza familiar...</div>
+            </div>
+            <div class="p-3 border-b hover:bg-gray-50 cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium">Maria Lopez</span>
+                    <span class="text-xs text-gray-500">19:30</span>
+                </div>
+                <div class="text-sm text-gray-500 truncate">Cuanto cuesta la cena?</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="flex-1 flex flex-col">
+        <div class="p-4 border-b bg-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="font-medium">Carlos Perez</div>
+                    <div class="text-sm text-gray-500">WhatsApp - Cliente desde Ene 2026</div>
+                </div>
+                <div class="flex space-x-2">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">INTENT: Pedido</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">$24.50</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="flex justify-end">
+                <div class="bg-blue-500 text-white rounded-lg px-4 py-2 max-w-xs">
+                    Quiero una pizza familiar
+                </div>
+            </div>
+            <div class="flex justify-start">
+                <div class="bg-gray-200 rounded-lg px-4 py-2 max-w-xs">
+                    Margarita, Pepperoni o BBQ?
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <div class="bg-blue-500 text-white rounded-lg px-4 py-2 max-w-xs">
+                    Pepperoni
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 border-t bg-white">
+            <div class="flex space-x-2">
+                <input type="text" placeholder="Escribir respuesta..."
+                       class="flex-1 px-4 py-2 border rounded-lg">
+                <button class="bg-orange-500 text-white px-4 py-2 rounded-lg">
+                    Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel derecho -->
+    <div class="w-64 bg-white border-l p-4">
+        <h3 class="font-semibold mb-4">Customer Info</h3>
+        <div class="space-y-3 text-sm">
+            <div>
+                <div class="text-gray-500">Pedidos</div>
+                <div class="font-medium">17</div>
+            </div>
+            <div>
+                <div class="text-gray-500">Valor acumulado</div>
+                <div class="font-medium">$384.00</div>
+            </div>
+            <div>
+                <div class="text-gray-500">Ultimo pedido</div>
+                <div class="font-medium">Pizza Pepperoni</div>
+            </div>
+            <div>
+                <div class="text-gray-500">Frecuencia</div>
+                <div class="font-medium">2.3 pedidos/mes</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

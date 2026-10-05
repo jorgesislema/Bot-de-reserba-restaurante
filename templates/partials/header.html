@@ -1,0 +1,12 @@
+<header class="bg-white shadow-sm border-b px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+        <h2 class="text-lg font-semibold">{% block page_title %}Dashboard{% endblock %}</h2>
+    </div>
+    <div class="flex items-center gap-4">
+        <span class="text-sm text-gray-500">{{ now }}</span>
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+            <span class="text-sm text-gray-600">Online</span>
+        </div>
+    </div>
+</header>
