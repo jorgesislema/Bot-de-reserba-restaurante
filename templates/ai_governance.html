@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}AI Governance - Restaurant AI{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">AI Governance</h1>
+
+<!-- AI Control Center -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">AI Control Center</h2>
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="text-gray-500 text-sm">Model</label>
+            <select class="w-full mt-1 px-3 py-2 border rounded">
+                <option>nvidia/nemotron-3.5-lightning:free</option>
+                <option>meta-llama/llama-3.1-8b-instruct:free</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-gray-500 text-sm">Confidence Threshold</label>
+            <input type="number" value="0.85" step="0.05"
+                   class="w-full mt-1 px-3 py-2 border rounded">
+        </div>
+        <div>
+            <label class="text-gray-500 text-sm">Human Escalation</label>
+            <div class="mt-2">
+                <input type="checkbox" checked class="mr-2"> Habilitado
+            </div>
+        </div>
+        <div>
+            <label class="text-gray-500 text-sm">PII Protection</label>
+            <div class="mt-2">
+                <input type="checkbox" checked class="mr-2"> Habilitado
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tool Permissions -->
+<div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold mb-4">Tool Permissions</h2>
+    <table class="w-full">
+        <thead>
+            <tr class="text-left text-gray-500 border-b">
+                <th class="pb-2">Accion</th>
+                <th class="pb-2">Permiso</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="border-b">
+                <td class="py-2">Consultar menu</td>
+                <td><span class="text-green-600">Permitido</span></td>
+            </tr>
+            <tr class="border-b">
+                <td class="py-2">Crear pedido</td>
+                <td><span class="text-green-600">Permitido</span></td>
+            </tr>
+            <tr class="border-b">
+                <td class="py-2">Crear reserva</td>
+                <td><span class="text-green-600">Permitido</span></td>
+            </tr>
+            <tr class="border-b">
+                <td class="py-2">Cancelar pedido</td>
+                <td><span class="text-yellow-600">Requiere validacion</span></td>
+            </tr>
+            <tr class="border-b">
+                <td class="py-2">Emitir reembolso</td>
+                <td><span class="text-red-600">Denegado</span></td>
+            </tr>
+            <tr class="border-b">
+                <td class="py-2">Modificar precios</td>
+                <td><span class="text-red-600">Denegado</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
