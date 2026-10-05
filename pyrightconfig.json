@@ -1,0 +1,10 @@
+{
+  "include": ["api", "database", "skills", "tools", "tests"],
+  "exclude": ["__pycache__", ".venv", "node_modules", "venv"],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "strict",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUntypedFunctionDecorator": "error",
+  "reportUntypedClassDecorator": "error"
+}
