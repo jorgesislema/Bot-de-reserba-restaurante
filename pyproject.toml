@@ -1,0 +1,47 @@
+[tool.poetry]
+name = "restaurant-ai"
+version = "1.0.0"
+description = "AI Restaurant Commerce & Operations Platform"
+authors = ["Your Name <your@email.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8.0"
+pyright = "^1.1.380"
+mypy = "^1.13.0"
+pytest = "^8.3.0"
+pytest-cov = "^6.0.0"
+pytest-asyncio = "^0.24.0"
+pre-commit = "^3.8.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "COM", "C4", "DTZ", "ISC", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "database", "skills", "tools"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+include = ["api", "database", "skills", "tools"]
+exclude = ["__pycache__", ".venv", "node_modules"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --cov=api --cov=database --cov=skills --cov=tools --cov-report=html"
