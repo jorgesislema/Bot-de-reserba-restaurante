@@ -9,6 +9,8 @@ def test_buscar_producto():
     resultado = buscar_producto.invoke("pizza")
     assert isinstance(resultado, str)
     assert len(resultado) > 0
+    # Should contain some product info
+    assert "Pizza" in resultado or "Producto" in resultado
 
 
 def test_crear_pedido():
@@ -22,14 +24,24 @@ def test_crear_pedido():
         "cliente_id": cliente_id,
         "canal": "whatsapp",
     })
-    assert "Pedido creado" in resultado
+    assert isinstance(resultado, str)
+    assert "Pedido creado:" in resultado
+    # Extract number after colon
+    numero_part = resultado.split(":")[1].strip()
+    assert numero_part.isdigit()
+    assert int(numero_part) > 0
 
 
 def test_crear_pedido_cliente_inexistente():
     resultado = crear_pedido.invoke({"cliente_id": 999999, "canal": "whatsapp"})
+    assert isinstance(resultado, str)
     assert "No pude crear" in resultado
+    assert "no existe" in resultado.lower()
 
 
 def test_consultar_estado_pedido():
     resultado = consultar_estado_pedido.invoke({"pedido_id": 999999})
+    assert isinstance(resultado, str)
     assert "No encontre" in resultado
+    assert "pedido" in resultado.lower()
+
