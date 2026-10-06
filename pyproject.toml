@@ -44,4 +44,7 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "llm: tests que invocan el LLM real (requieren OPENROUTER_API_KEY, tardan minutos)",
+]
 addopts = "-v --cov=api --cov=database --cov=skills --cov=tools --cov-report=html"

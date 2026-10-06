@@ -4,11 +4,30 @@ import logging
 
 from langchain_core.tools import tool
 from skills.orders.order_skill import OrderSkill
+from skills.customers.customer_skill import CustomerSkill
+from tools.autorizacion import DENEGADO, acceso_permitido, cliente_identificado
 
 logger = logging.getLogger(__name__)
 
 _order_skill = OrderSkill()
 _order_skill.initialize({})
+_customer_skill = CustomerSkill()
+_customer_skill.initialize({})
+
+
+def _pedido_propio(pedido_id: int):
+    """Devuelve el pedido si la identidad actual puede verlo, o DENEGADO.
+
+    Sin identidad verificada (contexto interno) se mantiene el acceso.
+    """
+    pedido = _order_skill.execute("obtener_pedido", {"pedido_id": pedido_id})
+    if pedido is None:
+        if cliente_identificado():
+            return DENEGADO
+        return None
+    if not acceso_permitido(pedido.get("cliente_telefono")):
+        return DENEGADO
+    return pedido
 
 
 @tool
@@ -22,6 +41,13 @@ def crear_pedido(cliente_id: int, canal: str = "whatsapp") -> str:
     Returns:
         Confirmacion con numero de pedido
     """
+    if cliente_identificado():
+        cliente = _customer_skill.execute(
+            "obtener_cliente_por_id", {"cliente_id": cliente_id}
+        )
+        if not cliente or not acceso_permitido(cliente.get("telefono")):
+            return DENEGADO
+
     try:
         pedido_id = _order_skill.execute("crear_pedido", {
             "cliente_id": cliente_id,
@@ -51,6 +77,10 @@ def agregar_item_pedido(pedido_id: int, producto_id: int, cantidad: int = 1, tam
     Returns:
         Confirmacion del item agregado
     """
+    pedido = _pedido_propio(pedido_id)
+    if pedido == DENEGADO:
+        return DENEGADO
+
     opciones = {}
     if tamano:
         opciones["tamano"] = tamano
@@ -89,6 +119,10 @@ def confirmar_pedido(pedido_id: int) -> str:
     Returns:
         Confirmacion del pedido
     """
+    pedido = _pedido_propio(pedido_id)
+    if pedido == DENEGADO:
+        return DENEGADO
+
     exito = _order_skill.execute("confirmar_pedido", {"pedido_id": pedido_id})
 
     if exito:
@@ -109,6 +143,10 @@ def cancelar_pedido(pedido_id: int, motivo: str = "Cancelado por cliente") -> st
     Returns:
         Confirmacion de cancelacion
     """
+    pedido = _pedido_propio(pedido_id)
+    if pedido == DENEGADO:
+        return DENEGADO
+
     exito = _order_skill.execute("cancelar_pedido", {
         "pedido_id": pedido_id,
         "motivo": motivo
@@ -130,7 +168,9 @@ def consultar_estado_pedido(pedido_id: int) -> str:
     Returns:
         Estado del pedido con detalles
     """
-    pedido = _order_skill.execute("obtener_pedido", {"pedido_id": pedido_id})
+    pedido = _pedido_propio(pedido_id)
+    if pedido == DENEGADO:
+        return DENEGADO
 
     if not pedido:
         return "No encontre ese pedido."
@@ -156,6 +196,13 @@ def consultar_pedido_cliente(cliente_id: int) -> str:
     Returns:
         Informacion del ultimo pedido
     """
+    if cliente_identificado():
+        cliente = _customer_skill.execute(
+            "obtener_cliente_por_id", {"cliente_id": cliente_id}
+        )
+        if not cliente or not acceso_permitido(cliente.get("telefono")):
+            return DENEGADO
+
     historial = _order_skill.execute("obtener_historial", {"cliente_id": cliente_id})
 
     if not historial or not historial.get("pedidos"):

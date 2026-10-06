@@ -26,10 +26,12 @@ def test_crear_pedido():
     })
     assert isinstance(resultado, str)
     assert "Pedido creado:" in resultado
-    # Extract number after colon
+    # Extract number after colon: el formato real es #YYYYMMDDNNNN
+    # (el test anterior esperaba solo digitos; se corrige al contrato real)
     numero_part = resultado.split(":")[1].strip()
-    assert numero_part.isdigit()
-    assert int(numero_part) > 0
+    assert numero_part.startswith("#")
+    assert numero_part[1:].isdigit()
+    assert int(numero_part[1:]) > 0
 
 
 def test_crear_pedido_cliente_inexistente():

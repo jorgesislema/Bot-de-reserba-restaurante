@@ -42,6 +42,7 @@ pip install -r requirements.txt
 # Configurar variables de entorno
 cp .env.example .env
 # Editar .env: OPENROUTER_API_KEY obligatorio para el chat
+# Produccion: WHATSAPP_APP_SECRET (firma del webhook) y REQUIRE_API_KEY=true
 
 # Datos de ejemplo (opcional)
 python scripts/seed_data.py
@@ -61,6 +62,8 @@ Dashboard: `http://localhost:8000/` · Health: `http://localhost:8000/api/health
 | `KILO_BASE_URL`, `KILO_CHAT_MODEL` | Endpoint/modelo del LLM |
 | `DATABASE_URL` | Default `sqlite:///restaurant_ai.db`; PostgreSQL usa advisory locks extra |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN` | Envio real WhatsApp + verificacion del webhook |
+| `WHATSAPP_APP_SECRET` | Firma `X-Hub-Signature-256` del webhook; **obligatoria**: sin ella `POST /webhook/whatsapp` responde 403 (fail-closed) |
+| `SECRET_KEY` | Firma JWT (HS256) de clientes para `/api/*` |
 | `TELEGRAM_BOT_TOKEN` | Envio real Telegram |
 | `REQUIRE_API_KEY` / `API_KEY` | En produccion `REQUIRE_API_KEY=true` exige header `X-API-Key` en `/api/*` (excepto health) |
 | `CORS_ORIGINS` | Origenes permitidos (coma-separados) |
@@ -80,30 +83,56 @@ skills/         dominio: menu, orders, reservations, delivery, customers,
 tools/          tools LangGraph (clasificadas READ / WRITE / SIDE_EFFECT)
 templates/      Frontend Jinja2 (dashboard, CRM)
 scripts/        seed_data.py, ingestar_menu.py
-tests/          102 tests
+tests/          141 tests (137 rapidos + 4 de integracion LLM)
 docs/           ARQUITECTURA, API, DESPLIEGUE, GUIA_USUARIO
 ```
 
 ## Tests
 
 ```bash
-# Suite completa (usa el LLM real en test_integracion.py: ~4-8 min)
-pytest --no-cov -q
+# Rapida (sin LLM, sin red)
+pytest tests/ -m "not llm" --no-cov -q
 
-# Rapida (sin integracion LLM)
-pytest tests/ --ignore=tests/test_integracion.py --no-cov -q
+# Integracion LLM real (test_integracion.py: ~4-8 min, requiere OPENROUTER_API_KEY)
+pytest tests/ -m llm --no-cov -q
+
+# Suite completa
+pytest --no-cov -q
 ```
 
 Cobertura actual por area: base de datos, reservas (incl. concurrencia), precios,
-clientes, seguridad (API key, rate limit, idempotencia, injection), gate de
-confirmacion, tools, skills, API e integracion.
+clientes, seguridad (API key, rate limit, idempotencia, injection), autenticacion
+JWT e IDOR (tokens invalidos, recursos ajenos), webhook WhatsApp (firma
+`X-Hub-Signature-256`, fail-closed), autorizacion de tools, envio WhatsApp
+(errores no se reportan como exito), gate de confirmacion, tools, skills, API e
+integracion.
+
+## Seguridad
+
+- **Dos capas de autenticacion en `/api/*`**: servicio (`X-API-Key`, siempre en
+  `/api/clientes/buscar`, `/api/auth/token`, `/api/metricas`, `/api/handoffs`;
+  en todo `/api/*` con `REQUIRE_API_KEY=true`) y cliente (`Authorization: Bearer
+  <JWT>`, HS256 firmado con `SECRET_KEY`, expira en 1 h).
+- **Anti-IDOR**: pedidos, clientes y reservas solo son visibles/editables por su
+  dueno (404 si no existe, 403 si es de otro cliente). La identidad nunca viene
+  del LLM ni de headers declarativos.
+- **Webhook WhatsApp firmado**: `POST /webhook/whatsapp` valida
+  `X-Hub-Signature-256` (HMAC-SHA256 del body crudo con `WHATSAPP_APP_SECRET`)
+  antes de procesar; sin secreto o con firma invalida responde 403.
+- **Tools con identidad de contexto**: el canal verificado propaga el telefono
+  via `ContextVar`; con identidad, las tools solo acceden a recursos propios
+  (dashboard webchat y Telegram quedan en contexto interno confiable).
+- **Telegram**: verificacion de firma pendiente (fuera de alcance de esta fase).
 
 ## Endpoints principales
 
 - `POST /api/chat` — chat con el agente (webchat)
-- `GET /api/productos`, `GET /api/disponibilidad`, `GET /api/metricas`, `GET /api/health`
-- `POST /api/pedidos`, `POST /api/reservas` — con validacion y errores 400/409
-- `POST /webhook/whatsapp`, `POST /webhook/telegram` — rate limit + idempotencia
+- `POST /api/auth/token` — emite JWT de cliente (requiere `X-API-Key`)
+- `GET /api/productos`, `GET /api/reservas/disponibilidad`, `GET /api/health` — publicos
+- `GET /api/metricas`, `GET /api/clientes/buscar` — con `X-API-Key`
+- `POST /api/pedidos`, `POST /api/reservas`, `GET /api/pedidos/{id}` — con JWT, recursos propios
+- `POST /webhook/whatsapp` — firma `X-Hub-Signature-256` + rate limit + idempotencia
+- `POST /webhook/telegram` — rate limit + idempotencia (sin verificacion de firma)
 
 Ver [docs/API.md](docs/API.md).
 
@@ -114,6 +143,8 @@ Ver [docs/API.md](docs/API.md).
 - **RAG / Qdrant**: documentado en `.env.example` pero no implementado; el menu se consulta via tools a la BD.
 - **Docker**: no hay Dockerfile/docker-compose en el repo.
 - **Sin credenciales LLM** el servidor arranca igual; el chat responde un mensaje de error seguro (queda en logs).
+- **`WHATSAPP_APP_SECRET` pendiente en `.env`**: hasta agregarlo, `POST /webhook/whatsapp` responde 403 (fail-closed, por diseno).
+- **Defecto pre-existente (no corregido, fuera de alcance)**: `order_tool.consultar_pedido_cliente` llama una accion inexistente en `OrderSkill` (`KeyError`) — el comportamiento es el mismo que antes de esta fase.
 
 ## Documentacion
 

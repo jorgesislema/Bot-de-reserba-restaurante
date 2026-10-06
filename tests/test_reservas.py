@@ -160,6 +160,56 @@ def test_reservas_concurrentes_no_exceden_capacidad(db):
     )
 
 
+def test_capacidad_llena_dos_hilos_solo_uno_entra(db):
+    """Caso limite: slot con 9/10 ocupados y dos hilos pidiendo +1 a la vez.
+
+    Solo uno de los dos puede entrar; la ocupacion final nunca supera 10.
+    """
+    import os
+
+    os.environ["RESTAURANT_TOTAL_CAPACITY"] = "10"
+    try:
+        db_local = RestaurantDB(db.database_url)
+    finally:
+        os.environ.pop("RESTAURANT_TOTAL_CAPACITY", None)
+
+    # 9 de 10 ocupados
+    db_local.crear_reserva(_datos(personas=9, telefono="+593900000020"))
+
+    resultados = []
+    lock = threading.Lock()
+
+    def intentar(telefono):
+        try:
+            rid = db_local.crear_reserva(_datos(personas=1, telefono=telefono))
+            with lock:
+                resultados.append(("ok", rid))
+        except ReservaNoDisponibleError:
+            with lock:
+                resultados.append(("rechazada", None))
+
+    hilos = [
+        threading.Thread(target=intentar, args=("+593900000021",)),
+        threading.Thread(target=intentar, args=("+593900000022",)),
+    ]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join()
+
+    exitosas = [r for r in resultados if r[0] == "ok"]
+    assert len(resultados) == 2
+    assert len(exitosas) == 1, (
+        f"Con 9/10 ocupados y dos solicitudes de +1 entraron {len(exitosas)}"
+    )
+
+    ocupadas = sum(
+        r["personas"] for r in db_local.obtener_reservas_por_fecha(FUTURA)
+        if r["estado"] in ("PENDING", "CONFIRMED", "pending", "confirmed")
+    )
+    assert ocupadas <= 10
+
+
 def test_cliente_id_inventado_es_rechazado(db):
     with pytest.raises(ReservaInvalidaError):
         db.crear_reserva(_datos(cliente_id=999999, telefono="+593900000012"))

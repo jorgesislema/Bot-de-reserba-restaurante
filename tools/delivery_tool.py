@@ -2,10 +2,26 @@
 
 from langchain_core.tools import tool
 from skills.delivery.delivery_skill import DeliverySkill
+from skills.orders.order_skill import OrderSkill
+from tools.autorizacion import DENEGADO, acceso_permitido, cliente_identificado
 
 
 _delivery_skill = DeliverySkill()
 _delivery_skill.initialize({})
+_order_skill = OrderSkill()
+_order_skill.initialize({})
+
+
+def _pedido_propio(pedido_id: int):
+    """Pedido si la identidad actual puede actuar sobre el, o DENEGADO."""
+    pedido = _order_skill.execute("obtener_pedido", {"pedido_id": pedido_id})
+    if pedido is None:
+        if cliente_identificado():
+            return DENEGADO
+        return None
+    if not acceso_permitido(pedido.get("cliente_telefono")):
+        return DENEGADO
+    return pedido
 
 
 @tool
@@ -43,6 +59,9 @@ def crear_envio_delivery(pedido_id: int, direccion: str, referencia: str = None)
     Returns:
         Confirmacion del envio
     """
+    if _pedido_propio(pedido_id) == DENEGADO:
+        return DENEGADO
+
     costo_info = _delivery_skill.execute("calcular_costo", {"direccion": direccion})
 
     envio_id = _delivery_skill.execute("crear_envio", {
@@ -67,6 +86,9 @@ def rastrear_delivery(pedido_id: int) -> str:
     Returns:
         Estado del envio
     """
+    if _pedido_propio(pedido_id) == DENEGADO:
+        return DENEGADO
+
     estado = _delivery_skill.execute("obtener_estado", {"pedido_id": pedido_id})
 
     if not estado:

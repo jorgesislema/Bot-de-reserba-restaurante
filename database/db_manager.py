@@ -501,8 +501,12 @@ class RestaurantDB:
 
             items = session.query(OrderItem).filter_by(pedido_id=pedido_id).all()
 
+            dueno = session.get(Customer, pedido.cliente_id) if pedido.cliente_id else None
+
             return {
                 "id": pedido.id,
+                "cliente_id": pedido.cliente_id,
+                "cliente_telefono": dueno.telefono if dueno else None,
                 "numero": pedido.numero_pedido,
                 "estado": pedido.estado.value,
                 "subtotal": float(pedido.subtotal),
@@ -802,6 +806,26 @@ class RestaurantDB:
                 )
             session.commit()
             return True
+        finally:
+            session.close()
+
+    def obtener_reserva(self, reserva_id: int) -> Optional[Dict]:
+        """Obtiene una reserva por su ID (lectura para autorizacion)."""
+        session = self._get_session()
+        try:
+            reserva = session.query(Reservation).filter_by(id=reserva_id).first()
+            if not reserva:
+                return None
+            return {
+                "id": reserva.id,
+                "cliente_id": reserva.cliente_id,
+                "fecha": reserva.fecha.isoformat(),
+                "hora": reserva.hora.strftime("%H:%M"),
+                "personas": reserva.personas,
+                "nombre_contacto": reserva.nombre_contacto,
+                "telefono": reserva.telefono,
+                "estado": reserva.estado.value if reserva.estado else None,
+            }
         finally:
             session.close()
 

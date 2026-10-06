@@ -2,6 +2,7 @@
 
 from langchain_core.tools import tool
 from skills.analytics.analytics_skill import AnalyticsSkill
+from tools.autorizacion import DENEGADO, cliente_identificado
 
 
 _analytics_skill = AnalyticsSkill()
@@ -40,6 +41,10 @@ def obtener_metricas() -> str:
     Returns:
         Metricas del dia
     """
+    if cliente_identificado():
+        # Datos agregados del negocio: solo contexto interno/staff
+        return DENEGADO
+
     metricas = _analytics_skill.execute("obtener_metricas", {})
 
     respuesta = "**Metricas de Hoy**\n\n"

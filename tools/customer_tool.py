@@ -4,6 +4,9 @@ import logging
 
 from langchain_core.tools import tool
 from skills.customers.customer_skill import CustomerSkill
+from tools.autorizacion import (
+    DENEGADO, acceso_permitido, cliente_identificado,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,9 @@ def buscar_cliente(telefono: str) -> str:
     Returns:
         Informacion del cliente o indicacion de crear uno nuevo
     """
+    if cliente_identificado() and not acceso_permitido(telefono):
+        return DENEGADO
+
     try:
         cliente = _customer_skill.execute(
             "obtener_cliente_por_telefono", {"telefono": telefono}
@@ -31,6 +37,8 @@ def buscar_cliente(telefono: str) -> str:
 
     if not cliente:
         return f"Cliente no encontrado con el telefono {telefono}. Deseas crear un nuevo cliente?"
+    if not acceso_permitido(cliente.get("telefono")):
+        return DENEGADO
 
     respuesta = f"Cliente: {cliente['nombre']}\n"
     respuesta += f"Pedidos totales: {cliente['total_pedidos']}\n"
@@ -52,6 +60,10 @@ def crear_cliente(nombre: str, telefono: str, email: str = None, canal: str = "w
     Returns:
         Confirmacion de creacion
     """
+    if cliente_identificado() and not acceso_permitido(telefono):
+        # Con identidad verificada solo se puede registrar a si mismo
+        return DENEGADO
+
     try:
         cliente_id = _customer_skill.execute("crear_cliente", {
             "nombre": nombre,
@@ -80,7 +92,9 @@ def obtener_historial_cliente(cliente_id: int) -> str:
         cliente = _customer_skill.execute(
             "obtener_cliente_por_id", {"cliente_id": cliente_id}
         )
-        if not cliente:
+        if cliente is None or not acceso_permitido(cliente.get("telefono")):
+            if cliente_identificado():
+                return DENEGADO
             return "No encontre un cliente con ese ID."
         historial = _customer_skill.execute(
             "obtener_historial", {"cliente_id": cliente_id}
@@ -121,6 +135,10 @@ def customer_360(cliente_id: int) -> str:
         cliente = _customer_skill.execute(
             "obtener_cliente_por_id", {"cliente_id": cliente_id}
         )
+        if cliente is None or not acceso_permitido(cliente.get("telefono")):
+            if cliente_identificado():
+                return DENEGADO
+            return "No encontre informacion del cliente con ese ID."
     except Exception:
         logger.exception("Error en customer_360 cliente_id=%s", cliente_id)
         return "No pude obtener la informacion del cliente en este momento."

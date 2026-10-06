@@ -5,6 +5,7 @@ import logging
 from langchain_core.tools import tool
 from database.db_manager import ReservaError
 from skills.reservations.reservation_skill import ReservationSkill
+from tools.autorizacion import DENEGADO, acceso_permitido, cliente_identificado
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,10 @@ def crear_reserva(fecha: str, hora: str, personas: int, nombre: str, telefono: s
     Returns:
         Confirmacion de la reserva o motivo de rechazo
     """
+    if cliente_identificado() and not acceso_permitido(telefono):
+        # Con identidad verificada solo se puede reservar a nombre propio
+        return DENEGADO
+
     prefs = {}
     if preferencias:
         for pref in preferencias.split(","):
@@ -103,6 +108,20 @@ def cancelar_reserva(reserva_id: int, motivo: str = None) -> str:
     Returns:
         Confirmacion de cancelacion
     """
+    try:
+        reserva = _reservation_skill.execute(
+            "obtener_reserva", {"reserva_id": reserva_id}
+        )
+    except Exception:
+        logger.exception("Error leyendo reserva id=%s", reserva_id)
+        return "No pude cancelar la reserva en este momento."
+
+    if reserva is None:
+        if cliente_identificado():
+            return DENEGADO
+    elif not acceso_permitido(reserva.get("telefono")):
+        return DENEGADO
+
     try:
         exito = _reservation_skill.execute("cancelar_reserva", {
             "reserva_id": reserva_id,

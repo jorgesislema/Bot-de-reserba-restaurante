@@ -4,6 +4,7 @@ import logging
 
 from langchain_core.tools import tool
 from skills.channels.channel_skill import ChannelSkill
+from tools.autorizacion import DENEGADO, acceso_permitido, cliente_identificado
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,10 @@ def enviar_mensaje_whatsapp(numero: str, mensaje: str) -> str:
     Returns:
         Estado real del envio
     """
+    if cliente_identificado() and not acceso_permitido(numero):
+        # Con identidad verificada solo se puede escribir al interlocutor
+        return DENEGADO
+
     resultado = _channel_skill.execute("enviar_respuesta", {
         "channel": "whatsapp",
         "to": numero,

@@ -20,8 +20,7 @@ from dotenv import load_dotenv
 from tools import (
     # Menu (READ)
     buscar_producto, obtener_detalle_producto, calcular_precio_pedido,
-    verificar_disponibilidad_producto, recomendar_producto,
-    # Orders (WRITE / READ)
+    verificar_disponibilidad_producto, recomendar_producto,    # Orders (WRITE / READ)
     crear_pedido, agregar_item_pedido, confirmar_pedido, cancelar_pedido,
     consultar_estado_pedido, consultar_pedido_cliente,
     # Reservations (WRITE / READ)
@@ -35,6 +34,7 @@ from tools import (
     # Analytics (READ / WRITE)
     registrar_interaccion, obtener_metricas,
 )
+from tools import autorizacion
 
 logger = logging.getLogger(__name__)
 
@@ -323,17 +323,27 @@ def get_agent():
     return app_graph
 
 
-def process_message(message: str, thread_id: str = "default", channel: str = "whatsapp") -> str:
+def process_message(
+    message: str,
+    thread_id: str = "default",
+    channel: str = "whatsapp",
+    identidad_verificada: Optional[str] = None,
+) -> str:
     """Procesa un mensaje y retorna la respuesta.
 
     Args:
         message: Mensaje del cliente
         thread_id: ID del hilo (telefono del cliente)
         channel: Canal de origen (whatsapp, telegram, webchat)
+        identidad_verificada: Identidad del dueno de los recursos, SOLO si
+            el punto de entrada la verifico (webhook WhatsApp con firma).
+            Las tools la usan para acotar sus acciones a ese cliente; el
+            LLM nunca puede setearla ni sustituirla.
 
     Returns:
         Respuesta del agente (nunca stack traces)
     """
+    token_identidad = autorizacion.establecer_identidad(identidad_verificada)
     try:
         agent = get_agent()
 
@@ -369,3 +379,5 @@ def process_message(message: str, thread_id: str = "default", channel: str = "wh
             "Error procesando mensaje channel=%s thread=%s", channel, thread_id
         )
         return "Disculpa, tuve un problema procesando tu mensaje. Puedes intentar de nuevo?"
+    finally:
+        autorizacion.limpiar_identidad(token_identidad)

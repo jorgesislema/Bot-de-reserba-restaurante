@@ -22,6 +22,7 @@ class ReservationSkill(BaseSkill):
             "verificar_disponibilidad": self._verificar_disponibilidad,
             "crear_reserva": self._crear_reserva,
             "cancelar_reserva": self._cancelar_reserva,
+            "obtener_reserva": self._obtener_reserva,
             "obtener_reservas": self._obtener_reservas,
         }
 
@@ -43,6 +44,9 @@ class ReservationSkill(BaseSkill):
             params.get("motivo")
         )
 
+    def _obtener_reserva(self, params: Dict):
+        return self.db.obtener_reserva(params["reserva_id"])
+
     def _obtener_reservas(self, params: Dict) -> List[Dict]:
         return self.db.obtener_reservas_por_fecha(
             params["fecha"],
@@ -51,7 +55,7 @@ class ReservationSkill(BaseSkill):
 
     def get_capabilities(self) -> List[str]:
         return ["verificar_disponibilidad", "crear_reserva",
-                "cancelar_reserva", "obtener_reservas"]
+                "cancelar_reserva", "obtener_reserva", "obtener_reservas"]
 
     def health_check(self) -> Dict[str, Any]:
         return {"status": "ok", "skill": "reservations"}

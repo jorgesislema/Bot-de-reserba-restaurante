@@ -150,7 +150,14 @@ def test_prompt_injection_en_busqueda(db):
 # IDs MANIPULABLES
 # ===========================================
 
-def test_api_reserva_con_cliente_id_inexistente_rechazada(db):
+def test_api_reserva_sin_token_es_rechazada(db):
+    """POST /api/reservas exige JWT de cliente: sin token -> 401.
+
+    Antes este test esperaba 400 por un cliente_id inexistente; el contrato
+    correcto es rechazar la LLAMADA entera por falta de autenticacion
+    (401) antes de mirar cualquier parametro. Los casos con token valido
+    (cliente_id ajeno, telefono ajeno) estan en tests/test_auth_idor.py.
+    """
     from api.main import app
 
     client = TestClient(app)
@@ -163,13 +170,17 @@ def test_api_reserva_con_cliente_id_inexistente_rechazada(db):
         "telefono": "+593966666663",
         "cliente_id": "999999",
     })
-    assert resp.status_code == 400
-    assert "999999" in resp.json()["detail"]
+    assert resp.status_code == 401
 
 
-def test_api_pedido_cliente_inexistente(db):
+def test_api_pedido_sin_token_es_rechazado(db):
+    """POST /api/pedidos exige JWT de cliente: sin token -> 401.
+
+    Contrato actualizado: la autenticacion se evalua antes que los
+    parametros (antes se esperaba 400/404 por cliente_id inexistente).
+    """
     from api.main import app
 
     client = TestClient(app)
     resp = client.post("/api/pedidos", params={"cliente_id": 999999})
-    assert resp.status_code in (400, 404)
+    assert resp.status_code == 401
