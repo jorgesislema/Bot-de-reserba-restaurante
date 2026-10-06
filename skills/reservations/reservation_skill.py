@@ -44,7 +44,10 @@ class ReservationSkill(BaseSkill):
         )
 
     def _obtener_reservas(self, params: Dict) -> List[Dict]:
-        return []
+        return self.db.obtener_reservas_por_fecha(
+            params["fecha"],
+            params.get("estado")
+        )
 
     def get_capabilities(self) -> List[str]:
         return ["verificar_disponibilidad", "crear_reserva",

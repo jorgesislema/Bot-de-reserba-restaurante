@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database.db_manager import RestaurantDB
+from database.models import Category, Product, ProductOption
 
 
 def ingestar_menu(json_path: str = "data/menu.json"):

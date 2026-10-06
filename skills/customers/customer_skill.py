@@ -19,16 +19,23 @@ class CustomerSkill(BaseSkill):
         params = params or {}
 
         actions = {
-            "obtener_cliente": self._obtener_cliente,
+            "obtener_cliente_por_id": self._obtener_cliente_por_id,
+            "obtener_cliente_por_telefono": self._obtener_cliente_por_telefono,
             "buscar_cliente": self._buscar_cliente,
             "crear_cliente": self._crear_cliente,
             "obtener_historial": self._obtener_historial,
         }
 
+        if action not in actions:
+            raise ValueError(f"Accion '{action}' no soportada")
+
         return actions[action](params)
 
-    def _obtener_cliente(self, params: Dict) -> Optional[Dict]:
-        return self.db.obtener_cliente(params["telefono"])
+    def _obtener_cliente_por_id(self, params: Dict) -> Optional[Dict]:
+        return self.db.obtener_cliente_por_id(params["cliente_id"])
+
+    def _obtener_cliente_por_telefono(self, params: Dict) -> Optional[Dict]:
+        return self.db.obtener_cliente_por_telefono(params["telefono"])
 
     def _buscar_cliente(self, params: Dict) -> List[Dict]:
         return self.db.buscar_cliente(params["busqueda"])
@@ -40,8 +47,8 @@ class CustomerSkill(BaseSkill):
         return self.db.obtener_historial(params["cliente_id"])
 
     def get_capabilities(self) -> List[str]:
-        return ["obtener_cliente", "buscar_cliente", "crear_cliente",
-                "obtener_historial"]
+        return ["obtener_cliente_por_id", "obtener_cliente_por_telefono",
+                "buscar_cliente", "crear_cliente", "obtener_historial"]
 
     def health_check(self) -> Dict[str, Any]:
         return {"status": "ok", "skill": "customers"}

@@ -4,6 +4,8 @@ import os
 import sys
 import json
 import hashlib
+import logging
+import secrets
 from datetime import datetime, date, timedelta
 from typing import Optional
 from pathlib import Path
@@ -15,17 +17,24 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 from dotenv import load_dotenv
 
 from api.check_env import check_environment
 from api.agent import process_message
-from database.db_manager import RestaurantDB
+from database.db_manager import RestaurantDB, ReservaError
+from skills.channels.channel_skill import ChannelSkill
+
+_channel_skill = ChannelSkill()
+_channel_skill.initialize({})
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 app = FastAPI(title="Restaurant AI Platform", version="1.0.0")
 
-# CORS
+# CORS: origenes explicitos desde variables de entorno
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
@@ -45,18 +54,56 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 db = RestaurantDB()
-processed_messages = set()
 
-# Rate limiting
+# ===========================================
+# SEGURIDAD: API KEY + RATE LIMITING
+# ===========================================
+# En produccion (REQUIRE_API_KEY=true) toda /api/* (salvo health) exige
+# el header X-API-Key. En desarrollo se puede desactivar.
+REQUIRE_API_KEY = os.getenv("REQUIRE_API_KEY", "false").lower() == "true"
+API_KEY = os.getenv("API_KEY", "")
+
+# Idempotencia de mensajes (DEV: en memoria; PROD: ver docs/DESPLIEGUE.md)
+processed_messages: set = set()
+PROCESSED_MESSAGES_MAX = 10000
+
+# Rate limiting (DEV: en memoria; PROD: ver docs/DESPLIEGUE.md)
 rate_limit_store = {}
+
+
+@app.middleware("http")
+async def seguridad_api_key(request: Request, call_next):
+    path = request.url.path
+    if REQUIRE_API_KEY and path.startswith("/api/") and path != "/api/health":
+        clave = request.headers.get("X-API-Key", "")
+        if not API_KEY or not clave or not secrets.compare_digest(clave, API_KEY):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "API key invalida o ausente"},
+            )
+    return await call_next(request)
 
 
 @app.on_event("startup")
 async def startup_event():
     ok, errors = check_environment()
     if not ok:
-        print(f"Advertencias: {errors}")
-    print("Restaurant AI Platform iniciado en http://localhost:8000")
+        logger.warning("Advertencias de configuracion: %s", errors)
+    logger.info("Restaurant AI Platform iniciado en http://localhost:8000")
+
+
+def marcar_procesado(message_id: str) -> bool:
+    """Idempotencia DEV: devuelve True si el mensaje ya fue procesado."""
+    if not message_id:
+        return False
+    if message_id in processed_messages:
+        return True
+    processed_messages.add(message_id)
+    if len(processed_messages) > PROCESSED_MESSAGES_MAX:
+        # Podar los mas antiguos (set conserva orden de insercion)
+        for _ in range(PROCESSED_MESSAGES_MAX // 10):
+            processed_messages.pop()
+    return False
 
 
 def ctx(request: Request, **kwargs):
@@ -101,22 +148,33 @@ async def whatsapp_webhook(request: Request):
         text = message["text"]["body"]
         message_id = message["id"]
 
-        # Idempotencia
-        if message_id in processed_messages:
+        # Rate limiting
+        if not check_rate_limit(phone):
+            logger.info("Rate limit alcanzado para %s", phone)
+            return {"status": "rate_limited"}
+
+        # Idempotencia: no procesar dos veces el mismo evento
+        if marcar_procesado(message_id):
             return {"status": "ok"}
-        processed_messages.add(message_id)
 
-        # Procesar con agente
-        response = process_message(text, thread_id=phone, channel="whatsapp")
+        # Procesar con agente en threadpool (no bloquea el event loop)
+        response = await run_in_threadpool(
+            process_message, text, phone, "whatsapp"
+        )
+        logger.info("Respuesta a %s: %s", phone, response)
 
-        # Enviar respuesta (simplificado)
-        print(f"Respuesta a {phone}: {response}")
+        # Enviar respuesta real por WhatsApp (no simula exito)
+        envio = _channel_skill.execute("enviar_respuesta", {
+            "channel": "whatsapp", "to": phone, "message": response,
+        })
+        if not envio.get("success"):
+            logger.info("Respuesta no enviada (whatsapp): %s", envio.get("error"))
 
         return {"status": "ok"}
 
-    except Exception as e:
-        print(f"Error procesando webhook: {e}")
-        return {"status": "error"}
+    except Exception:
+        logger.exception("Error procesando webhook de WhatsApp")
+        return JSONResponse(status_code=500, content={"status": "error"})
 
 
 # ===========================================
@@ -135,21 +193,38 @@ async def telegram_webhook(request: Request):
 
         chat_id = str(message["chat"]["id"])
         text = message.get("text", "")
+        update_id = str(data.get("update_id", ""))
 
         if not text:
             return {"status": "ok"}
 
-        # Procesar con agente
-        response = process_message(text, thread_id=chat_id, channel="telegram")
+        # Rate limiting
+        if not check_rate_limit(chat_id):
+            logger.info("Rate limit alcanzado para telegram %s", chat_id)
+            return {"status": "rate_limited"}
 
-        # Enviar respuesta (simplificado)
-        print(f"Respuesta a Telegram {chat_id}: {response}")
+        # Idempotencia
+        if marcar_procesado(f"tg:{update_id}:{chat_id}"):
+            return {"status": "ok"}
+
+        # Procesar con agente en threadpool (no bloquea el event loop)
+        response = await run_in_threadpool(
+            process_message, text, chat_id, "telegram"
+        )
+        logger.info("Respuesta a Telegram %s: %s", chat_id, response)
+
+        # Enviar respuesta real por Telegram (no simula exito)
+        envio = _channel_skill.execute("enviar_respuesta", {
+            "channel": "telegram", "to": chat_id, "message": response,
+        })
+        if not envio.get("success"):
+            logger.info("Respuesta no enviada (telegram): %s", envio.get("error"))
 
         return {"status": "ok"}
 
-    except Exception as e:
-        print(f"Error procesando webhook Telegram: {e}")
-        return {"status": "error"}
+    except Exception:
+        logger.exception("Error procesando webhook de Telegram")
+        return JSONResponse(status_code=500, content={"status": "error"})
 
 
 # ===========================================
@@ -245,7 +320,9 @@ async def configuracion(request: Request):
 
 @app.get("/cliente/{cliente_id}", response_class=HTMLResponse)
 async def cliente_historial(request: Request, cliente_id: int):
-    cliente = db.obtener_cliente("")
+    cliente = db.obtener_cliente_por_id(cliente_id)
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
     historial = db.obtener_historial(cliente_id)
     return templates.TemplateResponse(request, "cliente_historial.html", ctx(
         request, cliente=cliente, historial=historial
@@ -270,8 +347,11 @@ async def api_producto(producto_id: int):
 
 
 @app.post("/api/pedidos")
-async def api_crear_pedido(cliente_id: int, canal: str = "web"):
-    pedido_id = db.crear_pedido(cliente_id, canal)
+async def api_crear_pedido(cliente_id: int, canal: str = "webchat"):
+    try:
+        pedido_id = db.crear_pedido(cliente_id, canal)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"pedido_id": pedido_id}
 
 
@@ -295,9 +375,16 @@ async def api_agregar_item(
     if tamano:
         opciones["tamano"] = tamano
     if extras:
-        opciones["extras"] = extras.split(",")
+        opciones["extras"] = [e.strip() for e in extras.split(",") if e.strip()]
 
-    exito = db.agregar_item_pedido(pedido_id, producto_id, cantidad, opciones)
+    try:
+        exito = db.agregar_item_pedido(pedido_id, producto_id, cantidad, opciones)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not exito:
+        raise HTTPException(
+            status_code=409, detail="El pedido no admite items en su estado actual"
+        )
     return {"success": exito}
 
 
@@ -320,15 +407,20 @@ async def api_crear_reserva(
     hora: str = Form(...),
     personas: int = Form(...),
     nombre: str = Form(...),
-    telefono: str = Form(...)
+    telefono: str = Form(...),
+    cliente_id: int = Form(None)
 ):
-    reserva_id = db.crear_reserva({
-        "fecha": fecha,
-        "hora": hora,
-        "personas": personas,
-        "nombre_contacto": nombre,
-        "telefono": telefono
-    })
+    try:
+        reserva_id = db.crear_reserva({
+            "cliente_id": cliente_id,
+            "fecha": fecha,
+            "hora": hora,
+            "personas": personas,
+            "nombre_contacto": nombre,
+            "telefono": telefono
+        })
+    except (ReservaError, ValueError, TypeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"reserva_id": reserva_id}
 
 
@@ -339,12 +431,14 @@ async def api_disponibilidad(fecha: str, personas: int):
 
 @app.get("/api/clientes/buscar")
 async def api_buscar_cliente(q: str):
+    if not q or len(q) > 100:
+        raise HTTPException(status_code=400, detail="Consulta invalida")
     return db.buscar_cliente(q)
 
 
 @app.get("/api/clientes/{cliente_id}")
 async def api_cliente(cliente_id: int):
-    cliente = db.obtener_cliente("")
+    cliente = db.obtener_cliente_por_id(cliente_id)
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     return cliente
@@ -361,8 +455,14 @@ async def api_health():
 
 
 @app.post("/api/chat")
-async def api_chat(mensaje: str = Form(...), canal: str = Form("web")):
-    response = process_message(mensaje, thread_id="dashboard", channel=canal)
+async def api_chat(request: Request, mensaje: str = Form(...), canal: str = Form("webchat")):
+    if not check_rate_limit(request.client.host if request.client else "unknown"):
+        raise HTTPException(status_code=429, detail="Demasiadas solicitudes")
+    if canal not in ("whatsapp", "telegram", "webchat"):
+        raise HTTPException(status_code=400, detail="Canal invalido")
+    response = await run_in_threadpool(
+        process_message, mensaje, "dashboard", canal
+    )
     return {"response": response}
 
 
@@ -372,13 +472,20 @@ async def api_handoffs():
 
 
 # ===========================================
-# RATE LIMITING
+# RATE LIMITING (DEV: memoria; PROD: Redis)
 # ===========================================
 
+RATE_LIMIT_STORE_MAX = 5000
+
+
 def check_rate_limit(ip: str) -> bool:
-    """Verifica rate limiting por IP."""
+    """Verifica rate limiting por IP/identificador de canal."""
     now = datetime.now()
     limit = int(os.getenv("RATE_LIMIT_MESSAGES_PER_MINUTE", "30"))
+
+    if len(rate_limit_store) >= RATE_LIMIT_STORE_MAX and ip not in rate_limit_store:
+        # Protegerse contra inundacion de claves nuevas
+        return False
 
     if ip not in rate_limit_store:
         rate_limit_store[ip] = []

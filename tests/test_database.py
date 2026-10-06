@@ -1,5 +1,7 @@
 """Tests de base de datos."""
 
+from datetime import date, timedelta
+
 import pytest
 from database.models import OrderStatus
 
@@ -17,7 +19,7 @@ def test_obtener_cliente(db):
         "nombre": "Test",
         "telefono": "+593777777777"
     })
-    cliente = db.obtener_cliente("+593777777777")
+    cliente = db.obtener_cliente_por_telefono("+593777777777")
     assert cliente is not None
     assert cliente["nombre"] == "Test"
 
@@ -60,14 +62,16 @@ def test_cancelar_pedido(db, sample_customer, sample_product):
 
 
 def test_verificar_disponibilidad(db):
-    disponibilidad = db.verificar_disponibilidad("2026-09-20", None, 6)
+    fecha = (date.today() + timedelta(days=7)).isoformat()
+    disponibilidad = db.verificar_disponibilidad(fecha, None, 6)
     assert len(disponibilidad) > 0
 
 
 def test_crear_reserva(db, sample_customer):
+    fecha = (date.today() + timedelta(days=7)).isoformat()
     reserva_id = db.crear_reserva({
         "cliente_id": sample_customer,
-        "fecha": "2026-09-20",
+        "fecha": fecha,
         "hora": "20:00",
         "personas": 6,
         "nombre_contacto": "Carlos Perez",

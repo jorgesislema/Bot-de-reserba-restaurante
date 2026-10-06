@@ -74,3 +74,5 @@ __all__ = [
     "registrar_interaccion",
     "obtener_metricas",
 ]
+
+ALL_TOOL_NAMES = list(__all__)

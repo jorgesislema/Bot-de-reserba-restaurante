@@ -1,8 +1,11 @@
 """Herramientas de pedidos para LangGraph."""
 
+import logging
+
 from langchain_core.tools import tool
 from skills.orders.order_skill import OrderSkill
 
+logger = logging.getLogger(__name__)
 
 _order_skill = OrderSkill()
 _order_skill.initialize({})
@@ -19,12 +22,17 @@ def crear_pedido(cliente_id: int, canal: str = "whatsapp") -> str:
     Returns:
         Confirmacion con numero de pedido
     """
-    pedido_id = _order_skill.execute("crear_pedido", {
-        "cliente_id": cliente_id,
-        "canal": canal
-    })
-
-    pedido = _order_skill.execute("obtener_pedido", {"pedido_id": pedido_id})
+    try:
+        pedido_id = _order_skill.execute("crear_pedido", {
+            "cliente_id": cliente_id,
+            "canal": canal
+        })
+        pedido = _order_skill.execute("obtener_pedido", {"pedido_id": pedido_id})
+    except ValueError as e:
+        return f"No pude crear el pedido: {e}"
+    except Exception:
+        logger.exception("Error creando pedido cliente_id=%s", cliente_id)
+        return "No pude crear el pedido en este momento."
 
     return f"Pedido creado: {pedido['numero']}"
 
@@ -49,12 +57,20 @@ def agregar_item_pedido(pedido_id: int, producto_id: int, cantidad: int = 1, tam
     if extras:
         opciones["extras"] = [e.strip() for e in extras.split(",")]
 
-    exito = _order_skill.execute("agregar_item", {
-        "pedido_id": pedido_id,
-        "producto_id": producto_id,
-        "cantidad": cantidad,
-        "opciones": opciones
-    })
+    try:
+        exito = _order_skill.execute("agregar_item", {
+            "pedido_id": pedido_id,
+            "producto_id": producto_id,
+            "cantidad": cantidad,
+            "opciones": opciones
+        })
+    except ValueError as e:
+        return f"No pude agregar el item: {e}"
+    except Exception:
+        logger.exception(
+            "Error agregando item pedido=%s producto=%s", pedido_id, producto_id
+        )
+        return "No pude agregar el item en este momento."
 
     if exito:
         total = _order_skill.execute("calcular_total", {"pedido_id": pedido_id})
